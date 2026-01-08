@@ -1,24 +1,28 @@
 from datetime import datetime
-
-from app import app
-from models import db, Message
+import pytest
+from app import app, db
+from models import Message
 
 class TestApp:
     '''Flask application in app.py'''
 
-    with app.app_context():
-        m = Message.query.filter(
-            Message.body == "Hello 👋"
-            ).filter(Message.username == "Liza")
+    def setup_method(self):
+        """ This runs before every test method to ensure the DB is ready """
+        with app.app_context():
+            # 1. Create the tables if they don't exist
+            db.create_all()
 
-        for message in m:
-            db.session.delete(message)
+            # 2. Clean up specific test data
+            m = Message.query.filter(
+                Message.body == "Hello 👋"
+            ).filter(Message.username == "Liza").all()
 
-        db.session.commit()
+            for message in m:
+                db.session.delete(message)
+            db.session.commit()
 
     def test_has_correct_columns(self):
         with app.app_context():
-
             hello_from_liza = Message(
                 body="Hello 👋",
                 username="Liza")
@@ -28,11 +32,10 @@ class TestApp:
 
             assert(hello_from_liza.body == "Hello 👋")
             assert(hello_from_liza.username == "Liza")
-            assert(type(hello_from_liza.created_at) == datetime)
+            assert(isinstance(hello_from_liza.created_at, datetime))
 
             db.session.delete(hello_from_liza)
             db.session.commit()
-
     def test_returns_list_of_json_objects_for_all_messages_in_database(self):
         '''returns a list of JSON objects for all messages in the database.'''
         with app.app_context():
